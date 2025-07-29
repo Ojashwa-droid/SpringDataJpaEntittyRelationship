@@ -1,0 +1,56 @@
+Q1. Who should be the owning side in a OneToMany / ManyToOne relationship and why?
+Answer:
+The many side should be the owning side because it contains the foreign key (FK) pointing to the "one" side.
+ This design keeps the schema normalized and avoids First Normal Form (1NF) violations that could occur if the
+ "one" side tried to maintain a list of FKs.
+
+Q2. What is the purpose of the mappedBy attribute?
+Answer:
+mappedBy is used on the non-owning side to point to the field in the owning side that owns the relationship. It tells
+JPA not to maintain the relationship here, but instead to refer to the owning side’s configuration (which uses @JoinColumn).
+
+Q3. Is cascade = CascadeType.REMOVE enough to delete a child entity from the DB even without orphanRemoval?
+Answer:
+Yes, CascadeType.REMOVE is sufficient to delete the child entity when the parent is deleted. orphanRemoval is only
+necessary when you want to delete child entities that are removed from the collection, not when deleting the whole parent.
+
+Q4. Do we need to associate both sides of a bi-directional relationship before saving?
+Answer:
+Yes. For in-memory consistency, you should associate both sides of the relationship. This ensures that the entity graph
+is complete in Java. Then save the owning side or the parent with appropriate cascading if configured.
+
+Q5. In a OneToOne relationship, what happens if both sides have @JoinColumn?
+Answer:
+JPA will interpret it as two separate relationships, potentially creating an unnecessary join table. This is likely to
+ cause bugs and a mismatch between your domain model and database. You should designate one side as the owner with
+ @JoinColumn, and the other with mappedBy.
+
+Q6. Will accessing user.getPosts() cause a LazyInitializationException?
+Answer:
+Yes, if posts is marked as LAZY and you access it outside of a transactional context, it will throw a
+ LazyInitializationException. The solution is to ensure that you’re inside a method annotated with @Transactional.
+
+Q7. If a service method needs to access lazy-loaded fields, what must we ensure?
+Answer:
+We must ensure the service method is marked with @Transactional. This keeps the Hibernate session open while accessing
+lazy fields, allowing proper loading of associations like user.getPosts().
+
+Q8. Can we save the User entity after associating a new Post with it?
+Answer:
+
+Yes, if the relationship is bi-directional and Post is the owning side, associating it properly (setting the user
+in post) and saving the User (the parent) will work only if cascade is present. If not, you'd need to save Post separately.
+Also, if User already exists in DB, prefer merge.
+
+Q9. Is associating both sides of a relationship necessary for persistence in DB?
+Answer:
+
+Not necessary. The relationship will be saved if the owning side is associated correctly because it controls the FK.
+However, it’s strongly recommended to associate both sides to keep the in-memory object graph consistent.
+
+Q10. If User is the owner in a OneToOne with Profile, and cascade is set to ALL, will changes to Profile be persisted by
+ saving User?
+
+Answer:
+Yes, with cascade = CascadeType.ALL on User, saving it will persist any changes to Profile. Even if cascade was absent,
+saving the owning side (User) would still update the FK reference. But saving Profile alone would fail if it’s the non-owning side.
